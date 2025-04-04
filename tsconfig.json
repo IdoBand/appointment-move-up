@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+      "removeComments": false,
+      "baseUrl": "",
+      "outDir": "",
+      "target": "ES6",
+      "lib": ["DOM", "ES2021"],
+      "allowSyntheticDefaultImports": true,
+      "esModuleInterop": true,
+      "moduleResolution": "node"
+    },
+    "exclude": ["**/*.test.ts"]
+  }

@@ -1,0 +1,39 @@
+1. open browser
+2. go to DOCTOR_ADDRESS
+    - wait a couple of seconds for page to load
+
+3. click 'זימון תור' button
+    <a href='...>זימון תור</a>
+    - wait a couple of seconds for page to load
+
+4. click 'הצגת תורים פנויים לסוג הביקור' button
+    <a href='...>הצגת תורים פנויים לסוג הביקור</a>
+    - wait a couple of seconds for page to load
+
+5. scrape available appointment dates.
+these will be organized in a table where each appointment is inside a <tr class="ItemStyle"> || <tr class="AlternatingItemStyle"> element.
+    - consider date, and hour which will be inside a <td> element
+    map each date into an object
+    {
+        day: dd/mm/yyyy,
+        hour: hh:mm,
+        rowNumber: <row number in table>
+    }
+6. decide wether one of the available dates satisfies pre configured date constraints
+    - if not ---> exit and come back later
+7. click 'הזמן תור' button using the 'rowNumber' property of the chosen date object
+    <a href='...>הזמן תור</a>
+    - wait a couple of seconds for page to load
+
+8. insert 4 inputs from .env file
+    1. ID               ---> <input id=memberId>
+    2. DOB_Day=dd       ---> <select id=DrpDay>
+    3. DOB_MONTH=mm     ---> <select id=DrpDay>
+    4. DOB_YEAR=yyyy    ---> <select id=DrpYear>
+
+9. click 'המשך' button
+    <a href='...>המשך</a>
+    - wait a couple of seconds for page to load
+
+10. click 'כן' button
+    <a href='...>כן</a>
