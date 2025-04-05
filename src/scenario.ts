@@ -1,21 +1,8 @@
 import puppeteer from "puppeteer";
+import { Human } from "./Human";
 import dotenv from 'dotenv'
 dotenv.config();
-import { Human } from "./Human";
 
-const timeConstraints = {
-    // general is for cases like avoid wednesdays or maybe constant time frames where you know you are preoccupied and cant make the appointment.
-    general: {
-        disallowedDays: ['יום ב'],
-        disallowedDates: [],
-        disallowedTimeSpan: []
-    },
-    // specific is for when you want to avoid setting an appointment on a specific date at a specific time frame.
-    specific: {
-        disallowedDate: '',
-        disallowedTimeSpan: ''
-    }
-}
 
 const inputsPersonalData: Record<string, {
         selector: string,
@@ -39,46 +26,66 @@ const inputsPersonalData: Record<string, {
         },
     }
 
-export async function scenario() {
-    // 1.
-    const browser = await puppeteer.launch({ headless: false });
-    const page = await browser.newPage();
-    
-    // 2.
-    await page.goto(process.env.DOCTOR_ADDRESS);
-    
-    const human = new Human(browser, page)
-    await human.waitLong()
-    // 3.
-    await human.findButtonAndClick('a', 'זימון תור')
-    await human.waitLong()
+export async function scenario(): Promise<{ isAppointmentSet: boolean, eventLog: string }> {
+    let human: Human
+    try {
+        // 1.
+        const browser = await puppeteer.launch({ headless: false });
+        const page = await browser.newPage();
+        
+        // 2.
+        await page.goto(process.env.DOCTOR_ADDRESS);
+        
+        human = new Human(browser, page)
+        await human.waitLong()
+        // 3.
+        const zimunTorBtn = await human.findDOMElement('a', 'זימון תור')
+        await human.clickButton(zimunTorBtn)
+        // 4.
+        const day = inputsPersonalData.day
+        await human.handleSelectInput(day.selector, day.value)
 
-    const day = inputsPersonalData.day
-    await human.handleSelectInput(day.selector, day.value)
-    await human.waitLong()
-    const month = inputsPersonalData.month
-    await human.handleSelectInput(month.selector, month.value)
-    await human.waitLong()
-    const year = inputsPersonalData.year
-    await human.handleSelectInput(year.selector, year.value)
-    await human.findButtonAndClick('a', 'המשך')
-    await human.waitLong()
-    const id = inputsPersonalData.id
-    await human.handleTextInput(id.selector, id.value)
-    await human.findButtonAndClick('a', 'המשך')
-    // 4.
-    await human.findButtonAndClick('a', 'הצגת תורים פנויים לסוג הביקור')
-    await human.waitLong()
-    // 5.
-    await human.scrapeAppointments()
-    // 6.
-    console.log(human.availableAppointments)
+        const month = inputsPersonalData.month
+        await human.handleSelectInput(month.selector, month.value)
 
+        const year = inputsPersonalData.year
+        await human.handleSelectInput(year.selector, year.value)
 
-
-    human.exit()
-  
-    // Close after a few seconds
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    await browser.close();
+        const id = inputsPersonalData.id
+        await human.handleTextInput(id.selector, id.value)
+        // 5.
+        const hamshechBtn = await human.findDOMElement('a', 'המשך')
+        await human.clickButton(hamshechBtn)
+        // 5.5
+        const isVisitTypeNecessary = await human.findDOMElement('select.visitTypeSelect')
+        if (isVisitTypeNecessary) {
+            // 6.
+            await human.handleSelectInput('select.visitTypeSelect', 'ביקור רגיל')
+        }
+        
+        const hazegTorimBtn = await human.findDOMElement('a', 'הצגת תורים פנויים לסוג הביקור')
+        if (hazegTorimBtn) {
+            // 7.
+            await human.clickButton(hazegTorimBtn)
+        }
+        
+        // 8.
+        await human.scrapeAppointments()
+        // 9.
+        const selectedAppointment = human.selectAppointment()
+        // 10.
+        const hazmenTorBtn = await human.findDOMElement(`a#${selectedAppointment.buttonId}`, 'הזמן תור')
+        await human.clickButton(hazmenTorBtn)
+        // 10.5. hidden step, see 'addAlertEventlistener' method and scenario.txt
+        // 11.
+        const yesBtn = await human.findDOMElement('a', 'כן')
+        await human.clickButton(yesBtn)
+        human.logAppointmentSet(`scenario() - 'yesBtn' was clicked`)
+        await human.waitLong()
+        human.exit()
+        return { isAppointmentSet: true, eventLog: human.eventLog }
+    } catch (err) {
+        human.exit()
+        return { isAppointmentSet: false, eventLog: human.eventLog }
+    }
 }

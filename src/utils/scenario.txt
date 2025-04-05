@@ -1,39 +1,67 @@
 1. open browser
+
 2. go to DOCTOR_ADDRESS
-    - wait a couple of seconds for page to load
 
+!!!!! verify that the doctor page actually has an an option for 'זימון תור'
 3. click 'זימון תור' button
-    <a href='...>זימון תור</a>
-    - wait a couple of seconds for page to load
+    <a href="...">זימון תור</a>
 
-4. click 'הצגת תורים פנויים לסוג הביקור' button
-    <a href='...>הצגת תורים פנויים לסוג הביקור</a>
-    - wait a couple of seconds for page to load
-
-5. scrape available appointment dates.
-these will be organized in a table where each appointment is inside a <tr class="ItemStyle"> || <tr class="AlternatingItemStyle"> element.
-    - consider date, and hour which will be inside a <td> element
-    map each date into an object
-    {
-        day: dd/mm/yyyy,
-        hour: hh:mm,
-        rowNumber: <row number in table>
-    }
-6. decide wether one of the available dates satisfies pre configured date constraints
-    - if not ---> exit and come back later
-7. click 'הזמן תור' button using the 'rowNumber' property of the chosen date object
-    <a href='...>הזמן תור</a>
-    - wait a couple of seconds for page to load
-
-8. insert 4 inputs from .env file
+4. insert 4 inputs from .env file
     1. ID               ---> <input id=memberId>
     2. DOB_Day=dd       ---> <select id=DrpDay>
     3. DOB_MONTH=mm     ---> <select id=DrpDay>
     4. DOB_YEAR=yyyy    ---> <select id=DrpYear>
 
-9. click 'המשך' button
-    <a href='...>המשך</a>
-    - wait a couple of seconds for page to load
+5. click 'המשך' button
+    <a href="...">המשך</a>
 
-10. click 'כן' button
-    <a href='...>כן</a>
+///// 5.5 depends on the doctor/visit type, overall 3 similar but different sub scenarios
+///// a. visit type needed to be selected
+/////   ---> continue to steps 6. and 7.
+///// b. visit type does not need to be selected and we still need to click step 7. button.
+/////   ---> skip to step 7.
+///// c. we landed in the appointments page.
+/////   ---> skip to step 8.
+
+6. select a visit type
+    <select className="visitTypeSelect"...>
+        <option value="0">בחר</option>
+        <option value="00001">ביקור רגיל</option>
+        <option value="00026">פעולה כירורגית</option>
+        ....
+    </select>
+
+7. click 'הצגת תורים פנויים לסוג הביקור' button
+    <a href="...">הצגת תורים פנויים לסוג הביקור</a>
+
+8. scrape available appointment.
+these will be organized in a table where each appointment is inside a <tr class="ItemStyle"> || <tr class="AlternatingItemStyle"> element.
+    - consider date, hebrewDay and hour. each will be inside a <td> element
+    map each available appointment into an object of type Appointment
+    {
+        date: 'dd/mm/yyyy'
+        hebrewDay: 'יום א' || 'יום ב, .....
+        hour: 'hh:mm'
+        buttonId: string
+    }
+
+9. decide wether one of the available appointment satisfies pre configured date constraints
+    - if not ---> exit and come back later
+    - if yes ---> continue to step 8.
+
+10. click 'הזמן תור' button using the 'buttonId' property of the chosen Appointment object
+    <a href="...">הזמן תור</a>
+
+///// 10.5 depends on the doctor/visit type, after step 10. we either:
+///// a. get an alert about appointment confirmation
+/////   ---> just approve it and the appointment will be set.
+/////        Puppeteer has an event listener for alerts,
+/////        we will use it to inspect the message to see if its the setting appointment message,
+/////        if it is we throw an empty error in order to exit before step 11.
+/////        if its not we throw an actual error because we are not expecting any different alerts.
+/////        if no alert shows it'll automatically skip to step 11.
+///// b. land in a different page to confirm the appointment
+/////   ---> continue to step 11.
+
+11. click 'כן' button
+    <a href="...">כן</a>
