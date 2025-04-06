@@ -1,36 +1,42 @@
-import { timeConstraints } from "./TimeConstraints"
 import { Appointment } from "./types"
-import { format, isAfter } from 'date-fns'
+import { format, isAfter, parse } from 'date-fns'
+import { timeConstraints } from "./TimeConstraints"
 
 export class AppointmentManager {
 
     isAppointmentSatisfiesConstraints(appointment: Appointment) {
         // general
         const generalConstraints = timeConstraints.general
-        generalConstraints.disallowedDays.forEach(hebrewDay => {
-            if (hebrewDay === appointment.hebrewDay) return false
-        })
-        generalConstraints.disallowedDates.forEach(date =>{
-            if (date === appointment.date) return false
-        })
-        generalConstraints.disallowedTimeFrame.forEach(TimeFrame => {
-            if (this.isHourInRange(TimeFrame, appointment.hour)) return false
-        })
+        for (const hebrewDay of generalConstraints.disallowedDays) {
+            if (hebrewDay === appointment.hebrewDay.trim()) { return false }
+        }
+        for (const date of generalConstraints.disallowedDates) {
+            if (date === appointment.date.trim()) { return false }
+        }
+        for (const timeFrame of generalConstraints.disallowedTimeFrame) {
+            if (this.isHourInRange(timeFrame, appointment.hour.trim())) { return false }
+        }
 
         // specific
-        timeConstraints.specific.forEach((DateAndTimeFrame) => {
-            const disallowedDate = DateAndTimeFrame.disallowedDate
-            const disallowedTimeFrame = DateAndTimeFrame.disallowedTimeFrame
-            if (disallowedDate === appointment.date && this.isHourInRange(disallowedTimeFrame, appointment.hour)) return false
-        })
+        for (const dateAndTimeFrame of timeConstraints.specific) {
+            const disallowedDate = dateAndTimeFrame.disallowedDate
+            const disallowedTimeFrame = dateAndTimeFrame.disallowedTimeFrame
+            if (disallowedDate === appointment.date && this.isHourInRange(disallowedTimeFrame, appointment.hour)) { 
+                return false
+            }
+        }
 
         // noLaterThan
-        if (timeConstraints.noLaterThan && isAfter(appointment.date, timeConstraints.noLaterThan) ) {
-            return false
+        if (timeConstraints.noLaterThan) {
+            const noLaterThanDate = parse(timeConstraints.noLaterThan, 'dd/MM/yyyy', new Date());
+            const appointmentDate = parse(appointment.date, 'dd/MM/yyyy', new Date());
+
+            if (isAfter(appointmentDate, noLaterThanDate) ) { return false }
         }
+        
         // isTodayAllowed
         const todaysDate = format(new Date(), 'dd/MM/yyyy')
-        if (appointment.date === todaysDate && !timeConstraints.isTodayAllowed) return false
+        if (appointment.date === todaysDate && !timeConstraints.isTodayAllowed) { return false }
 
         return true
     }

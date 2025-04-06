@@ -1,5 +1,5 @@
 import puppeteer from "puppeteer";
-import { Human } from "./Human";
+import { Human } from "./utils/Human";
 import dotenv from 'dotenv'
 dotenv.config();
 

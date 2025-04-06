@@ -1,6 +1,6 @@
 import { Browser, Page, ElementHandle } from "puppeteer"
 import { Appointment } from "src/utils/types"
-import { AppointmentManager } from "./utils/AppointmentManager"
+import { AppointmentManager } from "./AppointmentManager"
 import { format } from 'date-fns'
 export class Human {
     isAppointmentSet: boolean = false
