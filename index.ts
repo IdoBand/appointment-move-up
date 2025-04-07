@@ -1,17 +1,19 @@
+import { NodeMailer } from "./src/utils/NodeMailer";
 import { scenario } from "./src/scenario";
 
-const ONE_HOUR = 1000 * 60 * 60
+const ONE_MINUTE = 1000 * 60
 
 async function main () {
+
   const { isAppointmentSet, eventLog } = await scenario()
-  console.log(eventLog);
+  // console.log(eventLog);
+  const nodeMailer = NodeMailer.init()
   
   if (isAppointmentSet) {
-    // send myself an email
-
+    await nodeMailer.sendEmail('SUCCESS! Doctors Appointment was set!', eventLog)
   } else {
     if (eventLog.includes("ERROR")) {
-      // send myself an email
+      await nodeMailer.sendEmail('ERROR! Something went wrong', eventLog)
     }
   }
 }
@@ -31,4 +33,4 @@ main()
 //     }
 //   }
 
-// }, ONE_HOUR)
+// }, ONE_MINUTE * 30)

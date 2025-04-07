@@ -268,6 +268,13 @@ export class Human {
         })
     }
     logAppointmentSet(source: string) {
-        this.log(`SUCCESS - Appointment set - ${source}\nSelected appointment:\n${this.selectAppointment}`)
+        if (!this.selectedAppointment) {
+            this.logAndThrowError('ERROR - logAppointmentSet() - Was invoked with no actual selectedAppointment.', new Error(''))
+        }
+        this.log(`SUCCESS - Appointment set - ${source}\nAppointment details:\n
+            date: ${this.selectedAppointment.date}\n
+            day: ${this.selectedAppointment.hebrewDay}\n
+            hour: ${this.selectedAppointment.hour}\n
+            `)
     }
 }
