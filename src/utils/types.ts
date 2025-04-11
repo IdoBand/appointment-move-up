@@ -9,7 +9,8 @@ export type TimeConstraints = {
     general: {
         disallowedDays: string[],
         disallowedDates: string[],
-        disallowedTimeFrame: string[]
+        disallowedDatesFrame: string []
+        disallowedHoursFrame: string[]
     },
     specific: SpecificDateTime[],
     noLaterThan: string
@@ -17,5 +18,5 @@ export type TimeConstraints = {
 }
 type SpecificDateTime = {
     disallowedDate: string
-    disallowedTimeFrame: string
+    disallowedHoursFrame: string
 }

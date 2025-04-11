@@ -1,6 +1,6 @@
 1. open browser
 
-2. go to DOCTOR_ADDRESS
+2. go to DOCTOR_URL
 
 !!!!! verify that the doctor page actually has an an option for 'זימון תור'
 3. click 'זימון תור' button

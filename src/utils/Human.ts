@@ -1,75 +1,92 @@
 import { Browser, Page, ElementHandle } from "puppeteer"
 import { Appointment } from "src/utils/types"
-import { AppointmentManager } from "./AppointmentManager"
+import { AppointmentManager } from "./AppointmentManager/AppointmentManager"
 import { format } from 'date-fns'
+
 export class Human {
     isAppointmentSet: boolean = false
     currentPage: Page
     browser: Browser
-    availableAppointments: Appointment[] = []
     selectedAppointment:Appointment
     AM = new AppointmentManager()
     eventLog: string = ''
     
-    constructor(browser: Browser, page: Page){
+    constructor(browser: Browser, page: Page, startingDate: Date){
         this.browser = browser
         this.currentPage = page
         this.addAlertEventlistener()
+        this.log('INFO', 'constructor', `First interval started at ${format(startingDate, 'dd/MM/yyyy HH:mm')}`)
     }
-
+    
     /*
-    * Pauses scenario for a random time of 2s-5s
+    * Pauses scrapeScript for a random time of 2s-5s
     **/
     async waitLong() {
         const timeout = Math.floor(Math.random() * (5000 - 2000 + 1) + 2000)
         return await new Promise(resolve => setTimeout(resolve, timeout))
     }
     /*
-    * Pauses scenario for a random time of 1s-3s
+    * Pauses scrapeScript for a random time of 1s-3s
     **/
     async waitShort() {
         const timeout = Math.floor(Math.random() * (3000 - 1000 + 1) + 1000)
         return await new Promise(resolve => setTimeout(resolve, timeout))
     }
+    /**
+     * Find a DOM element by a css selector and an optional innerText of that DOM element if exists.
+     * @param selector css selector.
+     * @param innerText Inner text inside a button or HTMLElement for example. Defaults to an empty string.
+     * @returns 
+     */
     async findDOMElement(selector: string, innerText: string = ""): Promise<ElementHandle<Element> | undefined> {
-        let result = undefined
+        let result: ElementHandle<Element> | undefined = undefined;
+        const selectorDescription = `'${selector}' ${innerText && `, innerText: "${innerText}"`}`
+        this.log('ACTION', 'Human.findDOMElement',`looking for ${selectorDescription}`)
 
-        this.log(`ACTION findDOMElement() - looking for '${selector}' ${innerText && innerText}`)
         try {
-            await this.currentPage.waitForFunction(
-                (selector, text) => {
-                    const elements = Array.from(document.querySelectorAll(selector))
-                    return elements.some(el => el.textContent?.trim() === text)
-                },
-                { timeout: 5000 },
-                selector,
-                innerText
-            )
+            if (innerText) {
+                await this.currentPage.waitForFunction(
+                    (selector, text) => {
+                        const elements = Array.from(document.querySelectorAll(selector));
+                        return elements.some(el => el.textContent?.trim() === text);
+                    },
+                    { timeout: 5000 },
+                    selector,
+                    innerText
+                );
     
-            const elements = await this.currentPage.$$(selector)
-            let logResult = ''
-            for (const el of elements) {
-                const text = await this.currentPage.evaluate(el => el.textContent?.trim(), el)
-                if (text === innerText) {
-                    result = el
-                    logResult = `SUCCESS findDOMElement() - ${selector} was found.`
-                    break
+                const elements = await this.currentPage.$$(selector);
+    
+                for (const el of elements) {
+                    const text = await this.currentPage.evaluate(el => el.textContent?.trim(), el);
+                    if (text === innerText) {
+                        result = el;
+                        break;
+                    }
                 }
+            } else {
+                await this.currentPage.waitForSelector(selector, { timeout: 5000 });
+                result = await this.currentPage.$(selector);
             }
+    
+            const status = result ? 'SUCCESS' : 'WARNING';
+            const message = result ? `${selectorDescription} was found` : `${selectorDescription} was not found`;
+    
+            this.log(status, 'Human.findDOMElement', message);
         } catch (err) {
-            this.log(`NOTFOUND findDOMElement() - selector: ${selector}.`)
+            this.log('ERROR', 'Human.findDOMElement', `Failed to find ${selectorDescription}: ${(err as Error).message}`);
         } finally {
-            return result
+            return result;
         }
     }
     async clickButton(button: ElementHandle<Element> | undefined) {
-        this.log(`ACTION clickButton() - trying to click ${button}.`)
+        this.log('ACTION','Human.clickButton', `trying to click ${button}.`)
          try {
             await button.click()
-            this.log(`SUCCESS clickButton() - ${button} was clicked.`)
+            this.log('SUCCESS','Human.clickButton', `${button} was clicked.`)
             await this.waitLong()
         } catch (err) {
-            this.logAndThrowError(`ERROR clickButton() - while trying to click ${button}.`, err)
+            this.logAndThrowError(`ERROR Human.clickButton - while trying to click ${button}.`, err)
             throw new Error('')
         }
     }
@@ -135,7 +152,7 @@ export class Human {
     }
 
     async scrapeAppointments() {
-        this.log(`ACTION - scrapeAppointments() - trying to scrape appointments.`)
+        this.log('ACTION', 'Human.scrapeAppointments' ,`trying to scrape appointments.`)
         try {
             await this.currentPage.waitForSelector('tr.ItemStyle, tr.AlternatingItemStyle', { timeout: 5000 })
         
@@ -177,30 +194,36 @@ export class Human {
             
                 return results
             })
-
-            this.availableAppointments = appointments
-            this.log(`SUCCESS - Human.scrapeAppointments() - appointments were scraped.`)
+            this.log('SUCCESS', 'Human.scrapeAppointments', `appointments were scraped.`)
+            return appointments
         } catch (err) {
-            this.logAndThrowError(`ERROR - Human.scrapeAppointments().`, err)
+            this.logAndThrowError(`ERROR - Human.scrapeAppointments`, err)
         }
     }
-    selectAppointment(): Appointment {
-        this.log(`ACTION - Human.scrapeAppointments() - trying to select an appointment`)
-        if (this.availableAppointments.length === 0) {
-            // problematic point. its possible that a doctor may not have available appointments at all without it being an error.
-            this.logAndThrowError(`AMBIGUOUS Human.selectAppointment() - availableAppointments.length = 0`, new Error(''))
+    setAvailableAppointments(availableAppointments: Appointment[]) {
+        if (!availableAppointments) {
+            this.logAndThrowError(`ERROR - Human.scrapeAppointments`, new Error('availableAppointments is undefined/null'))
+            return
         }
-        const selectedAppointment = this.AM.selectAppointment(this.availableAppointments)
+        this.AM.availableAppointments = availableAppointments
+    }
+    selectAppointment(): Appointment {
+        this.log ('ACTION', 'Human.selectAppointment', `trying to select an appointment`)
+        if (this.AM.availableAppointments.length === 0) {
+            // problematic point. its possible that a doctor may not have available appointments at all without it being an error.
+            this.logAndThrowError(`AMBIGUOUS Human.selectAppointment - availableAppointments.length = 0`, new Error(''))
+        }
+        const selectedAppointment = this.AM.selectAppointment()
         if (selectedAppointment) {
             this.selectedAppointment = selectedAppointment
-            this.log(`SUCCESS - Human.selectAppointment() - found an appointment:\n${this.selectedAppointment}`)
+            this.log('YAY!','Human.selectAppointment',`found an appointment:\n${this.selectedAppointment}`)
         } else {
-            this.logAndThrowError(`Human.selectAppointment() - No appointment that satisfies the time constraints was found .\nExiting iteration with no appointment set.`, new Error(''))
+            this.logAndThrowError(`UNLUCKY Human.selectAppointment - No appointment that satisfies the time constraints was found .\nExiting iteration with no appointment set.`, new Error(''))
         }
         return selectedAppointment
     }
     async handleSelectInput(selector: string, optionLabelToSelect: string) {
-        this.log(`ACTION - Human.handleSelectInput() - trying to find '${selector}' and select '${optionLabelToSelect}'`)
+        this.log('ACTION', 'Human.handleSelectInput', `trying to find '${selector}' and select '${optionLabelToSelect}'`)
         try {
           await this.currentPage.waitForSelector(selector)
           await this.currentPage.click(selector)
@@ -218,15 +241,16 @@ export class Human {
               select.dispatchEvent(new Event('change', { bubbles: true }))
             }
           }, selector, optionLabelToSelect)
-          this.log(`SUCCESS - Human.handleSelectInput() - '${optionLabelToSelect}' was selected`)
+          this.log('SUCCESS', 'Human.handleSelectInput', `'${optionLabelToSelect}' was selected`)
+
           await this.waitShort()
       
         } catch (err) {
-            this.log(`ERROR - Human.handleSelectInput() - '${optionLabelToSelect}' was not selected`)
+            this.log('ERROR', 'Human.handleSelectInput', `'${optionLabelToSelect}' was not selected`)
         }
     }
     async handleTextInput(selector: string, textToInput: string) {
-        this.log(`ACTION - Human.handleTextInput() - trying to find '${selector}' and write '${textToInput}'`)
+        this.log('ACTION', 'Human.handleTextInput', `trying to find '${selector}' and write '${textToInput}'`)
         try {
             await this.currentPage.waitForSelector(selector)
             const input: ElementHandle = await this.findDOMElement(selector, '')
@@ -238,40 +262,40 @@ export class Human {
             for (const char of textToInput) {
               await input.type(char, { delay: 100 + Math.random() * 100 })
             }
-            this.log(`SUCCESS - Human.handleTextInput() - '${textToInput}' was written`)
+            this.log('SUCCESS', 'Human.handleTextInput', `'${textToInput}' was written`)
           } catch (err) {
-            this.logAndThrowError(`Human.handleTextInput() - '${textToInput}' was not written`, err)
+            this.logAndThrowError(`Human.handleTextInput - '${textToInput}' was not written`, err)
           }
     }
     exit() {
         this.browser.close()
     }
     logAndThrowError(message: string, error: Error) {
-        this.eventLog += `${format(new Date(), 'dd/MM/yyyy HH:mm')} - ${message}\nError message:\n${error.message}\n\n`
+        this.eventLog += `${format(new Date(), 'dd/MM/yyyy HH:mm')} - ${message}\n${error.message ? `Error message:\n${error.message}` : ''}\n`
         throw new Error('')
     }
-    log(message: string) {
-        this.eventLog += `${format(new Date(), 'dd/MM/yyyy HH:mm')} - ${message}\n`
+    log(status: string, senderMethod: string, message: string) {
+        this.eventLog += `${format(new Date(), 'dd/MM/yyyy HH:mm')} - ${status} - ${senderMethod}() - ${message}\n`
     }
     async addAlertEventlistener() {
         this.currentPage.on('dialog', async dialog => {
             const alertMessage = dialog.message().trim()
             if (alertMessage === 'האם לזמן תור?') {
                 await dialog.accept()
-                this.logAppointmentSet(`Human.listenToAlerts() - '${alertMessage}' was accepted appointment.`)
+                this.logAppointmentSet(`Human.listenToAlerts - '${alertMessage}' alert was accepted.`)
                 await this.waitLong()
                 throw new Error('')
             } else {
                 await dialog.dismiss()
-                this.logAndThrowError(`ERROR - listenToAlerts() - 'Unexpected and unhandled alert: ${alertMessage}'`, new Error(''))
+                this.logAndThrowError(`ERROR - Human.listenToAlerts - 'Unexpected and unhandled alert: ${alertMessage}'`, new Error(''))
             }
         })
     }
     logAppointmentSet(source: string) {
         if (!this.selectedAppointment) {
-            this.logAndThrowError('ERROR - logAppointmentSet() - Was invoked with no actual selectedAppointment.', new Error(''))
+            this.logAndThrowError('ERROR - Human.logAppointmentSet - Was invoked with no actual selectedAppointment.', new Error(''))
         }
-        this.log(`SUCCESS - Appointment set - ${source}\nAppointment details:\n
+        this.log('SUCCESS','Human.logAppointmentSet',`${source}\nAppointment details:\n
             date: ${this.selectedAppointment.date}\n
             day: ${this.selectedAppointment.hebrewDay}\n
             hour: ${this.selectedAppointment.hour}\n

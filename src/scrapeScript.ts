@@ -1,32 +1,9 @@
 import puppeteer from "puppeteer";
 import { Human } from "./utils/Human";
-import dotenv from 'dotenv'
-dotenv.config();
+import { Appointment } from "./utils/types";
+import { inputsPersonalData, DOCTOR_URL } from "./utils/userData";
 
-
-const inputsPersonalData: Record<string, {
-        selector: string,
-        value: string
-    }> = {
-        day: {
-            selector: 'select#DrpDay',
-            value: process.env.DOB_DAY
-        },
-        month: {
-            selector: 'select#DrpMonth',
-            value: process.env.DOB_MONTH
-        },
-        year: {
-            selector: 'select#DrpYear',
-            value: process.env.DOB_YEAR
-        },
-        id: {
-            selector: '#memberId',
-            value: process.env.ID
-        },
-    }
-
-export async function scenario(): Promise<{ isAppointmentSet: boolean, eventLog: string }> {
+export async function scrapeScript(startingDate: Date): Promise<{ isAppointmentSet: boolean, eventLog: string }> {
     let human: Human
     try {
         // 1.
@@ -34,25 +11,21 @@ export async function scenario(): Promise<{ isAppointmentSet: boolean, eventLog:
         const page = await browser.newPage();
         
         // 2.
-        await page.goto(process.env.DOCTOR_ADDRESS);
+        await page.goto(DOCTOR_URL);
         
-        human = new Human(browser, page)
+        human = new Human(browser, page, startingDate)
         await human.waitLong()
         // 3.
         const zimunTorBtn = await human.findDOMElement('a', 'זימון תור')
         await human.clickButton(zimunTorBtn)
         // 4.
-        const day = inputsPersonalData.day
-        await human.handleSelectInput(day.selector, day.value)
+        await human.handleSelectInput('select#DrpDay', inputsPersonalData.day)
 
-        const month = inputsPersonalData.month
-        await human.handleSelectInput(month.selector, month.value)
+        await human.handleSelectInput('select#DrpMonth', inputsPersonalData.month)
 
-        const year = inputsPersonalData.year
-        await human.handleSelectInput(year.selector, year.value)
+        await human.handleSelectInput('select#DrpYear', inputsPersonalData.year)
 
-        const id = inputsPersonalData.id
-        await human.handleTextInput(id.selector, id.value)
+        await human.handleTextInput('#memberId', inputsPersonalData.id)
         // 5.
         const hamshechBtn = await human.findDOMElement('a', 'המשך')
         await human.clickButton(hamshechBtn)
@@ -70,17 +43,18 @@ export async function scenario(): Promise<{ isAppointmentSet: boolean, eventLog:
         }
         
         // 8.
-        await human.scrapeAppointments()
+        const availableAppointments: Appointment[] = await human.scrapeAppointments()
+        human.setAvailableAppointments(availableAppointments)
         // 9.
         const selectedAppointment = human.selectAppointment()
         // 10.
         const hazmenTorBtn = await human.findDOMElement(`a#${selectedAppointment.buttonId}`, 'הזמן תור')
         await human.clickButton(hazmenTorBtn)
-        // 10.5. hidden step, see 'addAlertEventlistener' method and scenario.txt
+        // 10.5. hidden step, see 'addAlertEventlistener' method and scenarios.txt
         // 11.
         const yesBtn = await human.findDOMElement('a', 'כן')
         await human.clickButton(yesBtn)
-        human.logAppointmentSet(`scenario() - 'yesBtn' was clicked`)
+        human.logAppointmentSet(`scrapeScript - 'yesBtn' was clicked`)
         await human.waitLong()
         human.exit()
         return { isAppointmentSet: true, eventLog: human.eventLog }

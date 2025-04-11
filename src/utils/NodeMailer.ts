@@ -11,31 +11,31 @@ export class NodeMailer {
 
     }
     public static init() {
-        if (!this.instance) {
-            this.instance = new NodeMailer()
-        }
-        return this.instance
+      if (!this.instance) {
+          this.instance = new NodeMailer()
+      }
+      return this.instance
     }
     async sendEmail(header: string, content: string) {
-        const transporter = nodemailer.createTransport({
-            service: this.EMAIL_SERVICE,
-            auth: {
-              user: this.EMAIL_ADD,
-              pass: this.EMAIL_PASS
-            }
-          });
-          
-          const mailOptions = {
-            from: this.EMAIL_ADD,
-            to: this.EMAIL_ADD,
-            subject: header,
-            text: content
-          };
-          
-          try {
-            const info = await transporter.sendMail(mailOptions);
-          } catch (err) {
-            console.error('Error sending email:', err);
+      const transporter = nodemailer.createTransport({
+          service: this.EMAIL_SERVICE,
+          auth: {
+            user: this.EMAIL_ADD,
+            pass: this.EMAIL_PASS
           }
+        });
+        
+        const mailOptions = {
+          from: this.EMAIL_ADD,
+          to: this.EMAIL_ADD,
+          subject: header,
+          text: content
+        };
+        
+        try {
+          const info = await transporter.sendMail(mailOptions);
+        } catch (err) {
+          console.error('Error sending email:', err);
+        }
     }
 }
