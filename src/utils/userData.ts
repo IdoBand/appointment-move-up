@@ -5,7 +5,7 @@ dotenv.config()
 export const DOCTOR_URL = process.env.DOCTOR_URL
 
 export const inputsPersonalData: Record<string, string> = { 
-    day: process.env.DOB_DAY,
+    dobDay: process.env.DOB_DAY,
     dobMonth:  process.env.DOB_MONTH,
     dobYear: process.env.DOB_YEAR,
     id: process.env.ID,

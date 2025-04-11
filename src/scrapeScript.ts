@@ -19,11 +19,11 @@ export async function scrapeScript(startingDate: Date): Promise<{ isAppointmentS
         const zimunTorBtn = await human.findDOMElement('a', 'זימון תור')
         await human.clickButton(zimunTorBtn)
         // 4.
-        await human.handleSelectInput('select#DrpDay', inputsPersonalData.day)
+        await human.handleSelectInput('select#DrpDay', inputsPersonalData.dobDay)
 
-        await human.handleSelectInput('select#DrpMonth', inputsPersonalData.month)
+        await human.handleSelectInput('select#DrpMonth', inputsPersonalData.dobMonth)
 
-        await human.handleSelectInput('select#DrpYear', inputsPersonalData.year)
+        await human.handleSelectInput('select#DrpYear', inputsPersonalData.dobYear)
 
         await human.handleTextInput('#memberId', inputsPersonalData.id)
         // 5.
@@ -54,12 +54,14 @@ export async function scrapeScript(startingDate: Date): Promise<{ isAppointmentS
         // 11.
         const yesBtn = await human.findDOMElement('a', 'כן')
         await human.clickButton(yesBtn)
-        human.logAppointmentSet(`scrapeScript - 'yesBtn' was clicked`)
+        human.successfullyTerminate(`scrapeScript - 'yesBtn' was clicked`)
         await human.waitLong()
-        human.exit()
-        return { isAppointmentSet: true, eventLog: human.eventLog }
     } catch (err) {
         human.exit()
-        return { isAppointmentSet: false, eventLog: human.eventLog }
+    } finally {
+        return {
+            isAppointmentSet: !!human.selectedAppointment,
+            eventLog: human.eventLog
+        }
     }
 }
