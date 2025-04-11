@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 export class Human {
     currentPage: Page
     browser: Browser
+    isSelectedAppointmentSet: boolean = false
     selectedAppointment: Appointment
     AM = new AppointmentManager()
     eventLog: string = ''
@@ -85,16 +86,13 @@ export class Human {
     }
     async clickButton(button: ElementHandle<Element> | undefined) {
         this.log('ACTION','Human.clickButton', `trying to click ${button}.`)
-        let resultLogStatus = "SUCCESS"
-        let resultLogMessage = `${button} was clicked.`
         try {
             await button.click()
-            await this.waitLong()
+            this.log("SUCCESS",'Human.clickButton', `${button} was clicked.`)
         } catch (err) {
-            resultLogStatus = "ERROR"
-            resultLogMessage = `${button} could not be clicked`
-        } finally {
-            this.log('resultLogStatus','Human.clickButton', resultLogMessage)
+            const errMessage = `${button} could not be clicked\n${err.message}`
+            this.log('ERROR', 'Human.clickButton', errMessage)
+            throw new Error(errMessage)
         }
     }
 
@@ -204,28 +202,33 @@ export class Human {
             this.log('SUCCESS', 'Human.scrapeAppointments', `appointments were scraped.`)
             return appointments
         } catch (err) {
-            this.logAndThrowError('ERROR', 'Human.scrapeAppointments', err)
+            this.log('ERROR', 'Human.scrapeAppointments', err.message)
+            throw err
         }
     }
     setAvailableAppointments(availableAppointments: Appointment[]) {
         if (!availableAppointments) {
-            this.logAndThrowError('ERROR', 'Human.scrapeAppointments', new Error('availableAppointments is undefined/null'))
-            return
+            const err = new Error('availableAppointments is undefined/null')
+            this.log('ERROR', 'Human.setAvailableAppointments', err.message)
+            throw err
         }
         this.AM.availableAppointments = availableAppointments
     }
     selectAppointment(): Appointment {
-        this.log ('ACTION', 'Human.selectAppointment', `trying to select an appointment`)
+        this.log ('ACTION', 'Human.selectAppointment', `trying to select an appointment.`)
         if (this.AM.availableAppointments.length === 0) {
             // problematic point. its possible that a doctor may not have available appointments at all without it being an error.
-            this.logAndThrowError('AMBIGUOUS', 'Human.selectAppointment', new Error('availableAppointments.length = 0'))
+            this.log('AMBIGUOUS', 'Human.selectAppointment', 'availableAppointments.length = 0')
         }
         const selectedAppointment = this.AM.selectAppointment()
         if (!selectedAppointment) {
-            this.logAndThrowError('UNLUCKY', 'Human.selectAppointment', new Error('No appointment that satisfies the time constraints was found. Exiting iteration with no appointment set.'))
+            const err = new Error('No appointment that satisfies the time constraints was found. Exiting iteration with no appointment set.')
+            this.log('UNLUCKY', 'Human.selectAppointment', err.message)
+            throw err
         }
 
         this.selectedAppointment = selectedAppointment
+        this.log('SUCCESS', 'Human.selectAppointment', 'an appointment was found')
         return selectedAppointment
     }
     async handleSelectInput(selector: string, optionLabelToSelect: string) {
@@ -255,7 +258,8 @@ export class Human {
             await this.waitShort()
       
         } catch (err) {
-            this.logAndThrowError('ERROR', 'Human.handleSelectInput', err)
+            this.log('ERROR', 'Human.handleSelectInput', err)
+            throw err
         }
     }
     async handleTextInput(selector: string, textToInput: string) {
@@ -272,53 +276,46 @@ export class Human {
               await input.type(char, { delay: 100 + Math.random() * 100 })
             }
             this.log('SUCCESS', 'Human.handleTextInput', `'${textToInput}' was written`)
-          } catch (err) {
-            this.logAndThrowError('ERROR',`Human.handleTextInput`, err)
-          }
+        } catch (err) {
+            this.log('ERROR',`Human.handleTextInput`, err.message)
+            throw err
+        }
     }
     exit() {
         this.browser.close()
-    }
-    logAndThrowError(status: string, senderMethod: string, error: Error) {
-        this.eventLog += `${format(new Date(), 'dd/MM/yyyy HH:mm')} - ${status} - ${senderMethod} - \n${error.message ? ` Message:\n${error.message}` : ''}\n`
-        throw new Error('Shutting down scrape script.')
     }
     log(status: string, senderMethod: string, message: string) {
         this.eventLog += `${format(new Date(), 'dd/MM/yyyy HH:mm')} - ${status} - ${senderMethod} - ${message}\n`
     }
     async addAlertEventlistener() {
-        this.currentPage.on('dialog', async dialog => {
-            let errorMessage = ""
+        this.currentPage.once('dialog', async (dialog) => {
             try {
                 const alertMessage = dialog.message().trim()
+                this.log('ACTION', 'Human.addAlertEventlistener', `Encountered an alert, Trying to handle. Alert message: '${alertMessage}'.`)
                 if (alertMessage === 'האם לזמן תור?') {
                     await dialog.accept()
-                    this.successfullyTerminate('Human.AlertEventlistener')
-                    await this.waitLong()
-                    return
+                    this.waitLong()
+                    this.isSelectedAppointmentSet = true
+                    this.successfullyTerminate('Human.addAlertEventlistener')
                 } else {
-                    errorMessage = `Unexpected and unhandled alert: ${alertMessage}`
+                    this.log('ERROR', 'Human.addAlertEventlistener', `Unexpected and unhandled alert: ${alertMessage}`)
                     await dialog.dismiss()
                 }
             } catch {
-                errorMessage = `Something unexpected happened.`
-            } finally {
-                this.logAndThrowError('ERROR', 'Human.listenToAlerts', new Error(errorMessage))
+                this.log('ERROR', 'Human.addAlertEventlistener', `Something unexpected happened.`)
             }
         })
     }
     successfullyTerminate(senderMethod: string) {
         if (!this.selectedAppointment) {
-            this.logAndThrowError('ERROR', 'Human.successfullyTerminate', new Error('Was invoked with no actual selectedAppointment.'))
+            const err = new Error(`Was invoked with no actual selectedAppointment. Sender method: ${senderMethod}`)
+            this.log('ERROR', 'Human.successfullyTerminate', err.message)
+            throw err
         }
         this.log('SUCCESS','Human.successfullyTerminate',`${senderMethod}\nAppointment details:\n
             date: ${this.selectedAppointment.date}\n
             day: ${this.selectedAppointment.hebrewDay}\n
             hour: ${this.selectedAppointment.hour}\n
         `)
-        this.exit()
-        if (senderMethod === 'Human.AlertEventlistener') {
-            throw new Error('senderMethod')
-        }
     }
 }

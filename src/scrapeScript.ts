@@ -50,17 +50,22 @@ export async function scrapeScript(startingDate: Date): Promise<{ isAppointmentS
         // 10.
         const hazmenTorBtn = await human.findDOMElement(`a#${selectedAppointment.buttonId}`, 'הזמן תור')
         await human.clickButton(hazmenTorBtn)
-        // 10.5. hidden step, see 'addAlertEventlistener' method and scenarios.txt
+        await human.waitLong()
+        // 10.5.
+        if (human.isSelectedAppointmentSet) {
+            throw new Error('Appointment set! skip to finish.')
+        }
         // 11.
         const yesBtn = await human.findDOMElement('a', 'כן')
         await human.clickButton(yesBtn)
         human.successfullyTerminate(`scrapeScript - 'yesBtn' was clicked`)
         await human.waitLong()
+        human.isSelectedAppointmentSet = true
     } catch (err) {
         human.exit()
     } finally {
         return {
-            isAppointmentSet: !!human.selectedAppointment,
+            isAppointmentSet: human.isSelectedAppointmentSet,
             eventLog: human.eventLog
         }
     }
