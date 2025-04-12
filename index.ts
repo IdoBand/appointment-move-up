@@ -3,8 +3,8 @@ import { scrapeScript } from "./src/scrapeScript";
 
 const ONE_MINUTE = 1000 * 60
 
-async function main () {
-  const startingDate = new Date()
+async function runScrapeScript(startingDate: Date): Promise<Record<string, boolean>> {
+  let isError = false
   const { isAppointmentSet, eventLog } = await scrapeScript(startingDate)
   console.log(eventLog);
   const nodeMailer = NodeMailer.init()
@@ -12,26 +12,36 @@ async function main () {
   if (isAppointmentSet) {
     await nodeMailer.sendEmail('SUCCESS! Doctors Appointment was set!', eventLog)
   } else if (eventLog.includes("ERROR")) {
-    await nodeMailer.sendEmail('ERROR! Something went wrong', eventLog)   
+    await nodeMailer.sendEmail('ERROR! Something went wrong', eventLog)
+    isError = true
   } 
-  else {
-    await nodeMailer.sendEmail('TEST CASE! Bot run successfully but did not find an appointment', eventLog)   
-  }
+
+  return { isAppointmentSet, isError }
 }
-main()
-// const main = setInterval(async () => {
-//   console.log('interval stating');
+
+const main = async () => {
+  const startingDate = new Date()
+  let errorCounter = 0
+
+  const { isAppointmentSet, isError } = await runScrapeScript(startingDate)
+  if (isAppointmentSet) { return }
+  if (isError) { errorCounter++ }
   
-//   const { isAppointmentSet, log } = await scenario()
+  const interval = setInterval(async () => {
 
-//   if (isAppointmentSet) {
-//     clearInterval(main)
-//     // send myself an email
+    const { isAppointmentSet, isError } = await runScrapeScript(startingDate)
 
-//   } else {
-//     if (log.includes("ERROR")) {
-//       // send myself an email
-//     }
-//   }
+    if (isAppointmentSet || errorCounter === 3) {
+      clearInterval(interval)
+    }
+    
+    if (isError) {
+      errorCounter++
+    } else {
+      errorCounter = 0
+    }
 
-// }, ONE_MINUTE * 30)
+  }, ONE_MINUTE * 30)
+}
+
+main()

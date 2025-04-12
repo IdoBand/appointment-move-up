@@ -101,10 +101,6 @@ export class AppointmentManager {
         const noLaterThanDate = parse(timeConstraints.noLaterThan, 'dd/MM/yyyy', new Date());
         const today = new Date()
 
-        // today.setHours(0, 0, 0, 0); // Set the time to midnight
-        // noLaterThanDate.setHours(0, 0, 0, 0); // Set the time to midnight
-        console.log('Today:', today);
-        console.log('No Later Than:', noLaterThanDate);
         return isAfter(today, noLaterThanDate)
     }
 }
