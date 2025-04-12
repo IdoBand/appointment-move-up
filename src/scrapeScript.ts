@@ -58,7 +58,7 @@ export async function scrapeScript(startingDate: Date): Promise<{ isAppointmentS
         // 11.
         const yesBtn = await human.findDOMElement('a', 'כן')
         await human.clickButton(yesBtn)
-        human.successfullyTerminate(`scrapeScript - 'yesBtn' was clicked`)
+        human.logAppointmentSet(`scrapeScript - 'yesBtn' was clicked`)
         await human.waitLong()
         human.isSelectedAppointmentSet = true
     } catch (err) {

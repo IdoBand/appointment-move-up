@@ -296,7 +296,7 @@ export class Human {
                     await dialog.accept()
                     this.waitLong()
                     this.isSelectedAppointmentSet = true
-                    this.successfullyTerminate('Human.addAlertEventlistener')
+                    this.logAppointmentSet('Human.addAlertEventlistener')
                 } else {
                     this.log('ERROR', 'Human.addAlertEventlistener', `Unexpected and unhandled alert: ${alertMessage}`)
                     await dialog.dismiss()
@@ -306,13 +306,13 @@ export class Human {
             }
         })
     }
-    successfullyTerminate(senderMethod: string) {
+    logAppointmentSet(senderMethod: string) {
         if (!this.selectedAppointment) {
             const err = new Error(`Was invoked with no actual selectedAppointment. Sender method: ${senderMethod}`)
-            this.log('ERROR', 'Human.successfullyTerminate', err.message)
+            this.log('ERROR', 'Human.logAppointmentSet', err.message)
             throw err
         }
-        this.log('SUCCESS','Human.successfullyTerminate',`${senderMethod}\nAppointment details:\n
+        this.log('SUCCESS','Human.logAppointmentSet',`${senderMethod}\nAppointment details:\n
             date: ${this.selectedAppointment.date}\n
             day: ${this.selectedAppointment.hebrewDay}\n
             hour: ${this.selectedAppointment.hour}\n
