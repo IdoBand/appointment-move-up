@@ -372,13 +372,28 @@ export class Human {
         this.AM.timeConstraints = timeConstraints
         return timeConstraints
     }
-    async tryDetectUnauthorizedActivityMessage() {
-        const bodyText = await this.currentPage.evaluate(() => {
-            return document.body?.innerText || '';
-          });
-        
-          if (bodyText.includes('Unauthorized Activity Detected')) {
-            throw new Error('Detected WAF block: "Unauthorized Activity Detected" message found.');
+    async tryDetectUnauthorizedActivityMessage(): Promise<void> {
+        this.waitLong()
+        const found = await this.currentPage.evaluate(() => {
+          const searchText = 'Unauthorized Activity Detected'
+      
+          function findTextInDOM(element: Element): boolean {
+            if (element.textContent?.includes(searchText)) {
+              return true;
+            }
+      
+            for (const child of Array.from(element.children)) {
+              if (findTextInDOM(child)) return true
+            }
+      
+            return false;
+          }
+      
+          return findTextInDOM(document.body)
+        });
+      
+        if (found) {
+          throw new Error('"Unauthorized Activity Detected" text found in page.');
         }
-    }
+      }
 }
