@@ -16,6 +16,7 @@ export class Human {
     constructor(browser: Browser, page: Page, startingDate: Date) {
         this.browser = browser
         this.currentPage = page
+        this.spoofBrowser()
         this.addAlertEventlistener()
         this.log('INFO', 'constructor', `First interval started at ${format(startingDate, 'dd/MM/yyyy HH:mm')}`)
     }
@@ -146,21 +147,60 @@ export class Human {
         }
     }
     
-    // Spoof user-agent and navigator properties
-    async spoofBrowser(page: Page) {
-        await page.setUserAgent(
-            "Mozilla/5.0 (Windows NT 10.0 Win64 x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-        )
+    async spoofBrowser() {
+        await this.currentPage.setUserAgent(
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+        );
+      
+        await this.currentPage.evaluateOnNewDocument(() => {
+          // Webdriver
+          Object.defineProperty(navigator, 'webdriver', { get: () => false });
+      
+          // Plugins
+          Object.defineProperty(navigator, 'plugins', {
+            get: () => [1, 2, 3, 4, 5],
+          });
+      
+          // Languages
+          Object.defineProperty(navigator, 'languages', {
+            get: () => ['en-US', 'en'],
+          });
+      
+          // Hardware Concurrency
+          Object.defineProperty(navigator, 'hardwareConcurrency', {
+            get: () => 8,
+          });
+      
+          // Touch support
+          Object.defineProperty(navigator, 'maxTouchPoints', {
+            get: () => 1,
+          });
+      
+          // WebGL Vendor/Renderer
+          const getParameter = WebGLRenderingContext.prototype.getParameter;
+          WebGLRenderingContext.prototype.getParameter = function (parameter) {
+            if (parameter === 37445) return 'Intel Inc.'; // UNMASKED_VENDOR_WEBGL
+            if (parameter === 37446) return 'Intel Iris OpenGL Engine'; // UNMASKED_RENDERER_WEBGL
+            return getParameter.call(this, parameter)
+          };
+      
+          // Canvas Fingerprint Spoof
+          const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+          HTMLCanvasElement.prototype.toDataURL = function (...args) {
+            const result = originalToDataURL.apply(this, args);
+            return result.replace(/^data:image\/png;base64,/, 'data:image/png;base64,fakecanvas')
+          };
+      
 
-        await page.evaluateOnNewDocument(() => {
-            Object.defineProperty(navigator, "webdriver", { get: () => false })
-            Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] })
-        })
-    }
+        });
+      }
+      
 
     async scrapeAppointments() {
         this.log('ACTION', 'Human.scrapeAppointments' ,`trying to scrape appointments.`)
+        this.waitLong()
         try {
+            this.tryDetectUnauthorizedActivityMessage()
             await this.currentPage.waitForNetworkIdle()
             await this.currentPage.waitForSelector('tr.ItemStyle, tr.AlternatingItemStyle', { timeout: this.timeout })
         
@@ -331,5 +371,14 @@ export class Human {
         }
         this.AM.timeConstraints = timeConstraints
         return timeConstraints
+    }
+    async tryDetectUnauthorizedActivityMessage() {
+        const bodyText = await this.currentPage.evaluate(() => {
+            return document.body?.innerText || '';
+          });
+        
+          if (bodyText.includes('Unauthorized Activity Detected')) {
+            throw new Error('Detected WAF block: "Unauthorized Activity Detected" message found.');
+        }
     }
 }

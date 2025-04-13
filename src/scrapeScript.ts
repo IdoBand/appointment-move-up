@@ -11,9 +11,9 @@ export async function scrapeScript(startingDate: Date): Promise<{ isAppointmentS
         const page = await browser.newPage();
         
         // 2.
-        await page.goto(DOCTOR_URL);
         
         human = new Human(browser, page, startingDate)
+        await human.currentPage.goto(DOCTOR_URL);
         await human.getTimeConstraints()
         await human.waitLong()
         // 3.
