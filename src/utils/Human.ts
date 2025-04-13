@@ -1,7 +1,8 @@
 import { Browser, Page, ElementHandle } from "puppeteer"
-import { Appointment } from "src/utils/types"
+import { Appointment, TimeConstraints } from "src/utils/types"
 import { AppointmentManager } from "./AppointmentManager/AppointmentManager"
 import { format } from 'date-fns'
+import { getTimeConstraints } from "./mongoDB/mongoDB"
 
 export class Human {
     currentPage: Page
@@ -10,7 +11,7 @@ export class Human {
     selectedAppointment: Appointment
     AM = new AppointmentManager()
     eventLog: string = ''
-    
+    timeConstraints: TimeConstraints
     constructor(browser: Browser, page: Page, startingDate: Date) {
         this.browser = browser
         this.currentPage = page
@@ -295,8 +296,7 @@ export class Human {
                 if (alertMessage === 'האם לזמן תור?') {
                     await dialog.accept()
                     this.waitLong()
-                    this.isSelectedAppointmentSet = true
-                    this.logAppointmentSet('Human.addAlertEventlistener')
+                    this.onAppointmentSet('Human.addAlertEventlistener')
                 } else {
                     this.log('ERROR', 'Human.addAlertEventlistener', `Unexpected and unhandled alert: ${alertMessage}`)
                     await dialog.dismiss()
@@ -306,16 +306,28 @@ export class Human {
             }
         })
     }
-    logAppointmentSet(senderMethod: string) {
+    onAppointmentSet(senderMethod: string) {
         if (!this.selectedAppointment) {
             const err = new Error(`Was invoked with no actual selectedAppointment. Sender method: ${senderMethod}`)
-            this.log('ERROR', 'Human.logAppointmentSet', err.message)
+            this.log('ERROR', 'Human.onAppointmentSet', err.message)
             throw err
         }
-        this.log('SUCCESS','Human.logAppointmentSet',`${senderMethod}\nAppointment details:\n
+        this.isSelectedAppointmentSet = true
+        this.log('SUCCESS','Human.onAppointmentSet',`${senderMethod}\nAppointment details:\n
             date: ${this.selectedAppointment.date}\n
             day: ${this.selectedAppointment.hebrewDay}\n
             hour: ${this.selectedAppointment.hour}\n
         `)
+    }
+    async getTimeConstraints(): Promise<TimeConstraints> {
+        let timeConstraints: TimeConstraints
+        try {
+            timeConstraints = await getTimeConstraints()
+        } catch (err) {
+            this.log('ERROR', 'human.getTimeConstraints', `Failed to get timeConstraints\n${err.message}`)
+            throw err
+        }
+        this.AM.timeConstraints = timeConstraints
+        return timeConstraints
     }
 }

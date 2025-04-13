@@ -1,14 +1,21 @@
 import { NodeMailer } from "./src/utils/NodeMailer";
 import { scrapeScript } from "./src/scrapeScript";
+import { connectToDatabase, saveEventLogToDB } from "./src/utils/mongoDB/mongoDB";
 
 const ONE_MINUTE = 1000 * 60
+
+const nodeMailer = NodeMailer.init()
 
 async function runScrapeScript(startingDate: Date): Promise<Record<string, boolean>> {
   let isError = false
   const { isAppointmentSet, eventLog } = await scrapeScript(startingDate)
-  console.log(eventLog);
-  const nodeMailer = NodeMailer.init()
   
+  try {
+    await saveEventLogToDB(eventLog)
+  } catch {
+
+  }
+
   if (isAppointmentSet) {
     await nodeMailer.sendEmail('SUCCESS! Doctors Appointment was set!', eventLog)
   } else if (eventLog.includes("ERROR")) {
@@ -19,7 +26,15 @@ async function runScrapeScript(startingDate: Date): Promise<Record<string, boole
   return { isAppointmentSet, isError }
 }
 
-const main = async () => {
+async function main() {
+  
+  try {
+    await connectToDatabase()
+  } catch {
+    nodeMailer.sendEmail('ERROR - Failed to connect to MongoDB.', 'Sent from Appointment Move Up')
+    return
+  }
+
   const startingDate = new Date()
   let errorCounter = 0
 
@@ -34,7 +49,7 @@ const main = async () => {
     if (isAppointmentSet || errorCounter === 3) {
       clearInterval(interval)
     }
-    
+
     if (isError) {
       errorCounter++
     } else {

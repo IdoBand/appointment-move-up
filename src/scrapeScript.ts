@@ -7,13 +7,14 @@ export async function scrapeScript(startingDate: Date): Promise<{ isAppointmentS
     let human: Human
     try {
         // 1.
-        const browser = await puppeteer.launch({ headless: false });
+        const browser = await puppeteer.launch({ headless: true });
         const page = await browser.newPage();
         
         // 2.
         await page.goto(DOCTOR_URL);
         
         human = new Human(browser, page, startingDate)
+        await human.getTimeConstraints()
         await human.waitLong()
         // 3.
         const zimunTorBtn = await human.findDOMElement('a', 'זימון תור')
@@ -58,9 +59,10 @@ export async function scrapeScript(startingDate: Date): Promise<{ isAppointmentS
         // 11.
         const yesBtn = await human.findDOMElement('a', 'כן')
         await human.clickButton(yesBtn)
-        human.logAppointmentSet(`scrapeScript - 'yesBtn' was clicked`)
+
+        human.onAppointmentSet(`scrapeScript - 'yesBtn' was clicked`)
         await human.waitLong()
-        human.isSelectedAppointmentSet = true
+
     } catch (err) {
         human.exit()
     } finally {

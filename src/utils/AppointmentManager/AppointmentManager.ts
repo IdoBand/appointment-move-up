@@ -1,28 +1,32 @@
-import { Appointment } from "../types"
+import { Appointment, TimeConstraints } from "../types"
 import { format, isAfter, isBefore, isSameDay, parse } from 'date-fns'
-import { timeConstraints } from "../userData"
 
 export class AppointmentManager {
     availableAppointments: Appointment[]
+    timeConstraints: TimeConstraints
 
     isAppointmentSatisfiesConstraints(appointment: Appointment) {
         // general
-        const generalConstraints = timeConstraints.general
+        const generalConstraints = this.timeConstraints.general
         for (const hebrewDay of generalConstraints.disallowedDays) {
-            if (hebrewDay === appointment.hebrewDay.trim()) { return false }
+            if (hebrewDay === appointment.hebrewDay.trim()) { 
+                return false }
         }
         for (const date of generalConstraints.disallowedDates) {
-            if (date === appointment.date.trim()) { return false }
+            if (date === appointment.date.trim()) { 
+                return false }
         }
         for (const datesFrame of generalConstraints.disallowedDatesFrame) {  
-            if (this.isDateInFrame(datesFrame, appointment.date)) { return false }
+            if (this.isDateInFrame(datesFrame, appointment.date)) { 
+                return false }
         }
         for (const timeFrame of generalConstraints.disallowedHoursFrame) {
-            if (this.isHourInFrame(timeFrame, appointment.hour.trim())) { return false }
+            if (this.isHourInFrame(timeFrame, appointment.hour.trim())) { 
+                return false }
         }
 
         // specific
-        for (const dateAndTimeFrame of timeConstraints.specific) {
+        for (const dateAndTimeFrame of this.timeConstraints.specific) {
             const disallowedDate = dateAndTimeFrame.disallowedDate
             const disallowedHoursFrame = dateAndTimeFrame.disallowedHoursFrame
             if (disallowedDate === appointment.date && this.isHourInFrame(disallowedHoursFrame, appointment.hour)) { 
@@ -31,22 +35,25 @@ export class AppointmentManager {
         }
 
         // noLaterThan
-        if (timeConstraints.noLaterThan) {
-            const noLaterThanDate = parse(timeConstraints.noLaterThan, 'dd/MM/yyyy', new Date());
+        if (this.timeConstraints.noLaterThan) {
+            const noLaterThanDate = parse(this.timeConstraints.noLaterThan, 'dd/MM/yyyy', new Date());
             const appointmentDate = parse(appointment.date, 'dd/MM/yyyy', new Date());
 
-            if (isAfter(appointmentDate, noLaterThanDate) ) { return false }
+            if (isAfter(appointmentDate, noLaterThanDate) ) { 
+                return false }
         }
         
         // isTodayAllowed
         const todaysDate = format(new Date(), 'dd/MM/yyyy')
-        if (appointment.date === todaysDate && !timeConstraints.isTodayAllowed) { return false }
+        if (appointment.date === todaysDate && !this.timeConstraints.isTodayAllowed) { 
+            return false }
 
         return true
     }
     selectAppointment() {
         let selectedAppointment: Appointment
         const sortedAppointments = this.sortAppointmentsByDateAndHour(this.availableAppointments)
+
         for (const appointment of sortedAppointments) {
             if (this.isAppointmentSatisfiesConstraints(appointment)) {
                 selectedAppointment = appointment
@@ -98,7 +105,7 @@ export class AppointmentManager {
         return result
     }
     isTodayPassedNoLaterThanDate() {
-        const noLaterThanDate = parse(timeConstraints.noLaterThan, 'dd/MM/yyyy', new Date());
+        const noLaterThanDate = parse(this.timeConstraints.noLaterThan, 'dd/MM/yyyy', new Date());
         const today = new Date()
 
         return isAfter(today, noLaterThanDate)
