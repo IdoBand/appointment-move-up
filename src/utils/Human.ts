@@ -98,54 +98,6 @@ export class Human {
             throw new Error(errMessage)
         }
     }
-
-    async delay(min: number, max: number) {
-        const timeout = Math.floor(Math.random() * (max - min + 1) + min)
-        return new Promise(resolve => setTimeout(resolve, timeout))
-    }
-
-    async smoothScroll(page: Page, targetY: number) {
-        let currentPosition = 0
-        const step = 100 // Pixels per scroll
-        while (currentPosition < targetY) {
-            await page.evaluate((scrollStep) => {
-                window.scrollBy(0, scrollStep)
-            }, step)
-            currentPosition += step
-            await this.delay(300, 700) // Small random delay
-        }
-    }
-
-    // Randomized mouse movements
-    async moveMouse(page: Page) {
-        const viewport = await page.viewport()
-        if (!viewport) return
-
-        const targetX = Math.floor(Math.random() * viewport.width)
-        const targetY = Math.floor(Math.random() * viewport.height)
-        
-        await page.mouse.move(targetX, targetY, { steps: Math.floor(Math.random() * 20) + 10 })
-        await this.delay(500, 1500)
-    }
-
-    // Randomized clicking to avoid bot detection
-    async randomClick(page: Page, selector: string) {
-        const element = await page.$(selector)
-        if (element) {
-            // Move mouse to element before clicking
-            const box = await element.boundingBox()
-            if (box) {
-                const x = box.x + Math.random() * box.width
-                const y = box.y + Math.random() * box.height
-
-                await page.mouse.move(x, y, { steps: Math.floor(Math.random() * 15) + 5 })
-                await this.delay(300, 1000) // Human-like delay before clicking
-                await page.mouse.down()
-                await this.delay(50, 300)  // Vary click duration
-                await page.mouse.up()
-            }
-        }
-    }
     
     async spoofBrowser() {
         await this.currentPage.setUserAgent(
@@ -190,8 +142,6 @@ export class Human {
             const result = originalToDataURL.apply(this, args);
             return result.replace(/^data:image\/png;base64,/, 'data:image/png;base64,fakecanvas')
           };
-      
-
         });
       }
       
@@ -200,8 +150,7 @@ export class Human {
         this.log('ACTION', 'Human.scrapeAppointments' ,`trying to scrape appointments.`)
         this.waitLong()
         try {
-            this.tryDetectUnauthorizedActivityMessage()
-            await this.currentPage.waitForNetworkIdle({ timeout: 120000} )
+            await this.tryDetectUnauthorizedActivityMessage()
             await this.currentPage.waitForSelector('tr.ItemStyle, tr.AlternatingItemStyle', { timeout: 120000 })
         
             const appointments = await this.currentPage.evaluate(() => {
