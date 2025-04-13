@@ -161,6 +161,7 @@ export class Human {
     async scrapeAppointments() {
         this.log('ACTION', 'Human.scrapeAppointments' ,`trying to scrape appointments.`)
         try {
+            await this.currentPage.waitForNetworkIdle()
             await this.currentPage.waitForSelector('tr.ItemStyle, tr.AlternatingItemStyle', { timeout: this.timeout })
         
             const appointments = await this.currentPage.evaluate(() => {
