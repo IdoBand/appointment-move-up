@@ -9,9 +9,10 @@ export class Human {
     browser: Browser
     isSelectedAppointmentSet: boolean = false
     selectedAppointment: Appointment
-    AM = new AppointmentManager()
+    AM: AppointmentManager = new AppointmentManager()
     eventLog: string = ''
     timeConstraints: TimeConstraints
+    timeout: number = 10000
     constructor(browser: Browser, page: Page, startingDate: Date) {
         this.browser = browser
         this.currentPage = page
@@ -20,17 +21,17 @@ export class Human {
     }
     
     /*
-    * Pauses scrapeScript for a random time of 2s-5s
+    * Pauses scrapeScript for a random time of 3s-7s
     **/
     async waitLong() {
-        const timeout = Math.floor(Math.random() * (5000 - 2000 + 1) + 2000)
+        const timeout = Math.floor(Math.random() * (7000 - 3000 + 1) + 3000)
         return await new Promise(resolve => setTimeout(resolve, timeout))
     }
     /*
-    * Pauses scrapeScript for a random time of 1s-3s
+    * Pauses scrapeScript for a random time of 2s-5s
     **/
     async waitShort() {
-        const timeout = Math.floor(Math.random() * (3000 - 1000 + 1) + 1000)
+        const timeout = Math.floor(Math.random() * (5000 - 2000 + 1) + 2000)
         return await new Promise(resolve => setTimeout(resolve, timeout))
     }
     /**
@@ -56,7 +57,7 @@ export class Human {
                         const elements = Array.from(document.querySelectorAll(selector))
                         return elements.some(el => el.textContent?.trim() === text)
                     },
-                    { timeout: 5000 },
+                    { timeout: this.timeout },
                     selector,
                     innerText
                 );
@@ -71,7 +72,7 @@ export class Human {
                     }
                 }
             } else {
-                await this.currentPage.waitForSelector(selector, { timeout: 5000 })
+                await this.currentPage.waitForSelector(selector, { timeout: this.timeout })
                 result = await this.currentPage.$(selector)
             }
             if (result) {
@@ -160,7 +161,7 @@ export class Human {
     async scrapeAppointments() {
         this.log('ACTION', 'Human.scrapeAppointments' ,`trying to scrape appointments.`)
         try {
-            await this.currentPage.waitForSelector('tr.ItemStyle, tr.AlternatingItemStyle', { timeout: 5000 })
+            await this.currentPage.waitForSelector('tr.ItemStyle, tr.AlternatingItemStyle', { timeout: this.timeout })
         
             const appointments = await this.currentPage.evaluate(() => {
                 const rows = Array.from(document.querySelectorAll('tr.ItemStyle, tr.AlternatingItemStyle'))
@@ -235,7 +236,7 @@ export class Human {
     async handleSelectInput(selector: string, optionLabelToSelect: string) {
         this.log('ACTION', 'Human.handleSelectInput', `trying to find '${selector}' and select '${optionLabelToSelect}'`)
         try {
-            await this.currentPage.waitForSelector(selector, { visible: true, timeout: 5000 })
+            await this.currentPage.waitForSelector(selector, { visible: true, timeout: this.timeout })
             await this.currentPage.click(selector)
       
             await this.currentPage.evaluate((sel, label) => {
@@ -266,7 +267,7 @@ export class Human {
     async handleTextInput(selector: string, textToInput: string) {
         this.log('ACTION', 'Human.handleTextInput', `trying to find '${selector}' and write '${textToInput}'`)
         try {
-            await this.currentPage.waitForSelector(selector)
+            await this.currentPage.waitForSelector(selector, { timeout: this.timeout })
             const input: ElementHandle = await this.findDOMElement(selector, '')
         
             await input.click({ clickCount: 1 }) // Select existing text if any
