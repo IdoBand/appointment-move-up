@@ -201,8 +201,8 @@ export class Human {
         this.waitLong()
         try {
             this.tryDetectUnauthorizedActivityMessage()
-            await this.currentPage.waitForNetworkIdle()
-            await this.currentPage.waitForSelector('tr.ItemStyle, tr.AlternatingItemStyle', { timeout: this.timeout })
+            await this.currentPage.waitForNetworkIdle({ timeout: 120000} )
+            await this.currentPage.waitForSelector('tr.ItemStyle, tr.AlternatingItemStyle', { timeout: 120000 })
         
             const appointments = await this.currentPage.evaluate(() => {
                 const rows = Array.from(document.querySelectorAll('tr.ItemStyle, tr.AlternatingItemStyle'))
