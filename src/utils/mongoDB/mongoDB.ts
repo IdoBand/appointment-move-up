@@ -26,7 +26,7 @@ export async function getTimeConstraints(): Promise<TimeConstraints> {
     if (!db) {
         throw new Error('You are NOT Connected to MongoDB!')
     }
-    const collection = db.collection<TimeConstraints>(process.env.MONGODB_COLLECTION_NAME);
+    const collection = db.collection<TimeConstraints>('time-constraints');
 
     const timeConstraints = await collection.findOne({});
     if (!timeConstraints) {
@@ -47,4 +47,18 @@ export async function saveEventLogToDB(eventLog: string): Promise<void> {
     } catch (err) {
         throw err
     }
+}
+
+export async function getDocURLs(): Promise<string[]> {
+    if (!db) {
+        throw new Error('You are NOT Connected to MongoDB!')
+    }
+    const collection = db.collection<Record<string, string[]>>('doctor-urls');
+
+    const urlsDocument = await collection.findOne({});
+    if (!urlsDocument) {
+        throw new Error('docURLs was falsy')
+    }
+    
+    return urlsDocument.docURLs
 }

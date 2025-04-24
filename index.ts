@@ -56,7 +56,7 @@ async function main() {
       errorCounter = 0
     }
 
-  }, ONE_MINUTE * 30)
+  }, ONE_MINUTE * 10)
 }
 
 main()

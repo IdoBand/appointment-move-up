@@ -98,7 +98,17 @@ export class Human {
             throw new Error(errMessage)
         }
     }
-    
+    async goTo(doctorUrl: string) {
+        try {
+            this.log('ACTION', 'Human.goTO', `Visiting doc page: ${doctorUrl}`)
+            this.currentPage.goto(doctorUrl)
+            await this.waitLong()
+            this.log('SUCCESS', 'Human.goTO', `Visiting doc page`)
+        }catch (err) {
+            this.log('ERROR', 'Human.goTO', err.message)
+            throw err
+        }
+    }
     async spoofBrowser() {
         await this.currentPage.setUserAgent(
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
